@@ -1,0 +1,36 @@
+name: Daily Tracker Auto-Commit
+
+on:
+  schedule:
+    - cron: '30 14 * * *'  # 7:30 AM PST every day
+  workflow_dispatch:
+
+jobs:
+  daily-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Daily auto-commit
+        run: |
+          # Skip every other Sunday for natural pattern
+          DAY_OF_WEEK=$(date +%u)
+          WEEK_NUM=$(date +%V)
+          if [ "$DAY_OF_WEEK" -eq 7 ] && [ $((WEEK_NUM % 2)) -eq 0 ]; then
+            echo "Skipping this Sunday"
+            exit 0
+          fi
+
+          # Ensure data file exists
+          if [ ! -f data/entries.json ]; then
+            mkdir -p data
+            echo "[]" > data/entries.json
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "chore: daily tracker sync $(date '+%Y-%m-%d')"
+          git push
