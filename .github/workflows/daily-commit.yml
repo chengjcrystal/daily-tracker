@@ -2,7 +2,7 @@ name: Daily Tracker Auto-Commit
 
 on:
   schedule:
-    - cron: '30 14 * * *'  # 7:30 AM PST every day
+    - cron: '0 14 * * *'  # triggers at 7am PST, random delay added below
   workflow_dispatch:
 
 jobs:
@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Random delay (looks more human)
+        run: sleep $((RANDOM % 5400))  # up to 90 min random offset
+
       - name: Daily auto-commit
         run: |
-          # Skip every other Sunday for natural pattern
           DAY_OF_WEEK=$(date +%u)
           WEEK_NUM=$(date +%V)
           if [ "$DAY_OF_WEEK" -eq 7 ] && [ $((WEEK_NUM % 2)) -eq 0 ]; then
@@ -23,14 +25,27 @@ jobs:
             exit 0
           fi
 
-          # Ensure data file exists
           if [ ! -f data/entries.json ]; then
             mkdir -p data
             echo "[]" > data/entries.json
           fi
 
+          MESSAGES=(
+            "update tracker data"
+            "daily sync"
+            "log update"
+            "sync entries"
+            "tracker update"
+            "daily log"
+            "update data"
+            "sync daily entries"
+          )
+          MSG=${MESSAGES[$RANDOM % ${#MESSAGES[@]}]}
+
+          echo "last synced: $(date)" > data/last-sync.txt
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git diff --staged --quiet || git commit -m "chore: daily tracker sync $(date '+%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "$MSG"
           git push
